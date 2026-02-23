@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cartela de Bingo</title>
+    
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#007bff">
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #222;
+            color: #eee;
+            margin: 0;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
+        /* Controles superiores (Arquivo e Limpar) */
+        .controles-topo {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 500px;
+            justify-content: space-between;
+        }
+
+        /* Estilo padrão dos botões */
+        button, .input-file-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        button:hover, .input-file-btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* Botão de desfazer (agora embaixo) */
+        #btnDesfazer {
+            background-color: #dc3545; /* Vermelho */
+        }
+        #btnDesfazer:hover {
+            background-color: #c82333;
+        }
+        
+        /* Botão Limpar (no topo) */
+        #btnLimpar {
+            background-color: #ffc107; /* Amarelo */
+            color: #212529;
+        }
+        #btnLimpar:hover {
+            background-color: #e0a800;
+        }
+
+        /* Estilizando o input file para parecer um botão */
+        .input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* A área de desenho (Canvas) */
+        canvas {
+            width: 90vw;
+            height: 90vw;
+            max-width: 500px;
+            max-height: 500px;
+            border: 3px solid #fff;
+            border-radius: 12px;
+            background-color: #fff;
+            touch-action: none;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        /* Controles inferiores (Desfazer) */
+        .controles-baixo {
+            display: flex;
+            width: 100%;
+            max-width: 500px;
+            justify-content: flex-end;
+            margin-top: 15px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="controles-topo">
+        <div class="input-wrapper">
+            <button class="input-file-btn">📁 Carregar cartela</button>
+            <input type="file" id="carregarImagem" accept="image/*">
+        </div>
+        <button id="btnLimpar">Limpar Tudo 🗑️</button>
+    </div>
+
+    <canvas id="canvas" width="1000" height="1000"></canvas>
+
+    <div class="controles-baixo">
+        <button id="btnDesfazer">Desfazer ↩️</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const inputImagem = document.getElementById('carregarImagem');
+        const btnDesfazer = document.getElementById('btnDesfazer');
+        const btnLimpar = document.getElementById('btnLimpar');
+
+        let desenhando = false;
+        let historico = [];
+
+        // Configuração do risco
+        ctx.strokeStyle = "rgba(255, 0, 0, 0.6)";
+        ctx.lineWidth = 40;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        function getPosicao(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        // 1. CARREGAR IMAGEM
+        inputImagem.addEventListener('change', function(e) {
+            if (!e.target.files[0]) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    historico = [];
+                    salvarEstado();
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(e.target.files[0]);
+            e.target.value = '';
+        });
+
+        // 2. FUNÇÕES DE DESENHO
+        function iniciarDesenho(e) {
+            e.preventDefault();
+            desenhando = true;
+            const pos = getPosicao(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+
+        function desenhar(e) {
+            e.preventDefault();
+            if (!desenhando) return;
+            const pos = getPosicao(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function pararDesenho(e) {
+            if (desenhando) {
+                e.preventDefault();
+                desenhando = false;
+                ctx.closePath();
+                salvarEstado();
+            }
+        }
+
+        // Eventos
+        canvas.addEventListener('touchstart', iniciarDesenho, { passive: false });
+        canvas.addEventListener('touchmove', desenhar, { passive: false });
+        canvas.addEventListener('touchend', pararDesenho, { passive: false });
+        canvas.addEventListener('touchcancel', pararDesenho, { passive: false });
+
+        canvas.addEventListener('mousedown', iniciarDesenho);
+        canvas.addEventListener('mousemove', desenhar);
+        canvas.addEventListener('mouseup', pararDesenho);
+        canvas.addEventListener('mouseout', pararDesenho);
+
+        // 3. SALVAR ESTADO
+        function salvarEstado() {
+            const estadoAtual = canvas.toDataURL();
+            historico.push(estadoAtual);
+            try {
+                localStorage.setItem('bingoSalvo', estadoAtual);
+            } catch (e) {
+                console.warn("Não foi possível salvar no LocalStorage.", e);
+            }
+        }
+
+        // 4. BOTÃO DESFAZER
+        btnDesfazer.addEventListener('click', () => {
+            if (historico.length > 1) {
+                historico.pop();
+                const estadoAnterior = historico[historico.length - 1];
+                restaurarImagem(estadoAnterior);
+                localStorage.setItem('bingoSalvo', estadoAnterior);
+            }
+        });
+
+        // 5. BOTÃO LIMPAR
+        btnLimpar.addEventListener('click', () => {
+            if (confirm("Tem certeza que deseja limpar tudo?")) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                historico = [];
+                salvarEstado();
+            }
+        });
+
+        // Função auxiliar
+        function restaurarImagem(src) {
+            const img = new Image();
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+            img.src = src;
+        }
+
+        // 6. RECUPERAR AO ABRIR
+        window.onload = () => {
+            const salvo = localStorage.getItem('bingoSalvo');
+            if (salvo) {
+                restaurarImagem(salvo);
+                historico.push(salvo);
+            }
+        };
+    </script>
+
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Modo offline ativado com sucesso!', reg))
+            .catch(err => console.error('Erro ao ativar modo offline:', err));
+        });
+      }
+    </script>
+</body>
+</html>
