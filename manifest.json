@@ -1,7 +1,7 @@
 {
   "name": "Bingo App",
-  "short_name": "Bingo",
-  "description": "Cartela de Bingo para marcar offline",
+  "short_name": "Bingola",
+  "description": "Marcador de Bingo",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#222222",
