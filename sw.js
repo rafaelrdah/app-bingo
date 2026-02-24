@@ -1,43 +1,47 @@
-const CACHE_NAME = 'bingo-cache-v5'; // Subimos para v4 para forçar essa nova regra
+const CACHE_NAME = 'bingo-cache-v5';
 const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
-  './icone.jpg' // Certifique-se de que o nome da sua imagem está exato aqui
+  './icone.jpg'
 ];
 
-// 1. INSTALA E FORÇA A ATUALIZAÇÃO IMEDIATA (O Reboot)
 self.addEventListener('install', event => {
-  self.skipWaiting(); // Diz para o celular: "Não espere, atualize AGORA!"
+  self.skipWaiting(); 
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
   );
 });
 
-// 2. ATIVA E APAGA O LIXO ANTIGO (O Faxineiro)
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          // Se o nome do cache salvo for diferente do atual (v4), ele apaga
           if (cacheName !== CACHE_NAME) {
-            console.log('Limpando versão antiga:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
     })
   );
-  // Garante que a página atual já seja controlada por essa nova versão
-  return self.clients.claim(); 
+  return self.clients.claim();
 });
 
-// 3. BUSCA OS ARQUIVOS (Modo Offline normal)
+// A GRANDE MUDANÇA: "Network First" (Internet Primeiro)
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request)
-      .then(response => response || fetch(event.request))
+    fetch(event.request)
+      .then(response => {
+        // Se a internet tá pegando, baixa a versão mais recente e atualiza o cache escondido
+        return caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, response.clone());
+          return response;
+        });
+      })
+      .catch(() => {
+        // Se o fetch falhar (sem internet), puxa a versão salva offline
+        return caches.match(event.request);
+      })
   );
 });
