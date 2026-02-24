@@ -3,10 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Marcador de Bingo</title>
+    <title>Cartela de Bingo</title>
     
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#007bff">
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     
     <style>
         body {
@@ -21,7 +24,6 @@
             box-sizing: border-box;
         }
 
-        /* Controles superiores (Arquivo e Limpar) */
         .controles-topo {
             display: flex;
             gap: 12px;
@@ -31,7 +33,6 @@
             justify-content: space-between;
         }
 
-        /* Estilo padrão dos botões */
         button, .input-file-btn {
             background-color: #007bff;
             color: white;
@@ -45,28 +46,12 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
-        button:hover, .input-file-btn:hover {
-            background-color: #0056b3;
-        }
+        button:hover, .input-file-btn:hover { background-color: #0056b3; }
+        #btnDesfazer { background-color: #dc3545; }
+        #btnDesfazer:hover { background-color: #c82333; }
+        #btnLimpar { background-color: #ffc107; color: #212529; }
+        #btnLimpar:hover { background-color: #e0a800; }
 
-        /* Botão de desfazer (agora embaixo) */
-        #btnDesfazer {
-            background-color: #dc3545; /* Vermelho */
-        }
-        #btnDesfazer:hover {
-            background-color: #c82333;
-        }
-        
-        /* Botão Limpar (no topo) */
-        #btnLimpar {
-            background-color: #ffc107; /* Amarelo */
-            color: #212529;
-        }
-        #btnLimpar:hover {
-            background-color: #e0a800;
-        }
-
-        /* Estilizando o input file para parecer um botão */
         .input-wrapper {
             position: relative;
             overflow: hidden;
@@ -75,13 +60,9 @@
         .input-wrapper input[type=file] {
             font-size: 100px;
             position: absolute;
-            left: 0;
-            top: 0;
-            opacity: 0;
-            cursor: pointer;
+            left: 0; top: 0; opacity: 0; cursor: pointer;
         }
 
-        /* A área de desenho (Canvas) */
         canvas {
             width: 90vw;
             height: 90vw;
@@ -94,7 +75,6 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
 
-        /* Controles inferiores (Desfazer) */
         .controles-baixo {
             display: flex;
             width: 100%;
@@ -103,6 +83,41 @@
             margin-top: 15px;
         }
 
+        /* TELA DE CORTE (Oculta por padrão) */
+        #cropper-modal {
+            display: none; 
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .cropper-container-wrapper {
+            width: 100%;
+            max-width: 500px;
+            height: 60vh; 
+            background-color: #333;
+            margin-bottom: 20px;
+        }
+
+        #image-to-crop {
+            display: block;
+            max-width: 100%;
+        }
+
+        .botoes-corte {
+            display: flex;
+            gap: 15px;
+        }
+
+        #btn-confirmar-corte { background-color: #28a745; }
+        #btn-confirmar-corte:hover { background-color: #218838; }
+        #btn-cancelar-corte { background-color: #6c757d; }
     </style>
 </head>
 <body>
@@ -121,6 +136,17 @@
         <button id="btnDesfazer">Desfazer ↩️</button>
     </div>
 
+    <div id="cropper-modal">
+        <h3 style="margin-top:0; color:white; text-align:center;">Ajuste a sua Cartela</h3>
+        <div class="cropper-container-wrapper">
+            <img id="image-to-crop" src="">
+        </div>
+        <div class="botoes-corte">
+            <button id="btn-cancelar-corte">Cancelar ❌</button>
+            <button id="btn-confirmar-corte">Cortar e Usar ✅</button>
+        </div>
+    </div>
+
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -128,10 +154,15 @@
         const btnDesfazer = document.getElementById('btnDesfazer');
         const btnLimpar = document.getElementById('btnLimpar');
 
+        const cropperModal = document.getElementById('cropper-modal');
+        const imageToCrop = document.getElementById('image-to-crop');
+        const btnConfirmarCorte = document.getElementById('btn-confirmar-corte');
+        const btnCancelarCorte = document.getElementById('btn-cancelar-corte');
+        let cropper;
+
         let desenhando = false;
         let historico = [];
 
-        // Configuração do risco
         ctx.strokeStyle = "rgba(255, 0, 0, 0.6)";
         ctx.lineWidth = 40;
         ctx.lineCap = "round";
@@ -141,7 +172,6 @@
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-            
             let clientX, clientY;
             if (e.touches) {
                 clientX = e.touches[0].clientX;
@@ -150,33 +180,71 @@
                 clientX = e.clientX;
                 clientY = e.clientY;
             }
-
             return {
                 x: (clientX - rect.left) * scaleX,
                 y: (clientY - rect.top) * scaleY
             };
         }
 
-        // 1. CARREGAR IMAGEM
+        // 1. LÓGICA INTELIGENTE: Pula ou Corta
         inputImagem.addEventListener('change', function(e) {
             if (!e.target.files[0]) return;
             
             const reader = new FileReader();
             reader.onload = function(event) {
-                const img = new Image();
-                img.onload = function() {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    historico = [];
-                    salvarEstado();
-                }
-                img.src = event.target.result;
+                const tempImg = new Image();
+                tempImg.onload = function() {
+                    
+                    // Se a imagem for um quadrado perfeito (motor antigo)
+                    if (tempImg.width === tempImg.height) {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(tempImg, 0, 0, canvas.width, canvas.height);
+                        historico = [];
+                        salvarEstado();
+                    } 
+                    // Se a imagem for retangular/maior (ativa a tela de corte)
+                    else {
+                        imageToCrop.src = event.target.result;
+                        cropperModal.style.display = 'flex';
+                        
+                        if (cropper) { cropper.destroy(); }
+                        
+                        cropper = new Cropper(imageToCrop, {
+                            aspectRatio: 1 / 1, // Força a ser quadrado
+                            viewMode: 1,
+                            dragMode: 'move',
+                            background: false
+                        });
+                    }
+                };
+                tempImg.src = event.target.result;
             }
             reader.readAsDataURL(e.target.files[0]);
-            e.target.value = '';
+            e.target.value = ''; 
         });
 
-        // 2. FUNÇÕES DE DESENHO
+        // 2. CONFIRMAR O CORTE E JOGAR NO CANVAS
+        btnConfirmarCorte.addEventListener('click', () => {
+            const canvasCortado = cropper.getCroppedCanvas({
+                width: 1000,
+                height: 1000
+            });
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(canvasCortado, 0, 0, canvas.width, canvas.height);
+            
+            cropperModal.style.display = 'none';
+            historico = [];
+            salvarEstado();
+        });
+
+        // 3. CANCELAR CORTE
+        btnCancelarCorte.addEventListener('click', () => {
+            cropperModal.style.display = 'none';
+            if (cropper) { cropper.destroy(); }
+        });
+
+        // 4. FUNÇÕES DE DESENHO
         function iniciarDesenho(e) {
             e.preventDefault();
             desenhando = true;
@@ -202,7 +270,6 @@
             }
         }
 
-        // Eventos
         canvas.addEventListener('touchstart', iniciarDesenho, { passive: false });
         canvas.addEventListener('touchmove', desenhar, { passive: false });
         canvas.addEventListener('touchend', pararDesenho, { passive: false });
@@ -213,7 +280,7 @@
         canvas.addEventListener('mouseup', pararDesenho);
         canvas.addEventListener('mouseout', pararDesenho);
 
-        // 3. SALVAR ESTADO
+        // 5. SALVAR ESTADO
         function salvarEstado() {
             const estadoAtual = canvas.toDataURL();
             historico.push(estadoAtual);
@@ -224,7 +291,7 @@
             }
         }
 
-        // 4. BOTÃO DESFAZER
+        // 6. BOTÃO DESFAZER
         btnDesfazer.addEventListener('click', () => {
             if (historico.length > 1) {
                 historico.pop();
@@ -234,7 +301,7 @@
             }
         });
 
-        // 5. BOTÃO LIMPAR
+        // 7. BOTÃO LIMPAR
         btnLimpar.addEventListener('click', () => {
             if (confirm("Tem certeza que deseja limpar tudo?")) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -243,7 +310,6 @@
             }
         });
 
-        // Função auxiliar
         function restaurarImagem(src) {
             const img = new Image();
             img.onload = () => {
@@ -253,7 +319,7 @@
             img.src = src;
         }
 
-        // 6. RECUPERAR AO ABRIR
+        // 8. RECUPERAR AO ABRIR
         window.onload = () => {
             const salvo = localStorage.getItem('bingoSalvo');
             if (salvo) {
@@ -267,8 +333,8 @@
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Modo offline ativado com sucesso!', reg))
-            .catch(err => console.error('Erro ao ativar modo offline:', err));
+            .then(reg => console.log('Modo offline ativado!'))
+            .catch(err => console.error('Erro no offline:', err));
         });
       }
     </script>
