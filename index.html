@@ -163,6 +163,7 @@
         let desenhando = false;
         let historico = [];
 
+        // Configuração do risco
         ctx.strokeStyle = "rgba(255, 0, 0, 0.6)";
         ctx.lineWidth = 40;
         ctx.lineCap = "round";
@@ -186,7 +187,7 @@
             };
         }
 
-        // 1. LÓGICA INTELIGENTE: Pula ou Corta
+        // 1. CARREGAR IMAGEM (Lógica Inteligente)
         inputImagem.addEventListener('change', function(e) {
             if (!e.target.files[0]) return;
             
@@ -195,14 +196,14 @@
                 const tempImg = new Image();
                 tempImg.onload = function() {
                     
-                    // Se a imagem for um quadrado perfeito (motor antigo)
+                    // Se for quadrado, vai direto
                     if (tempImg.width === tempImg.height) {
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.drawImage(tempImg, 0, 0, canvas.width, canvas.height);
                         historico = [];
                         salvarEstado();
                     } 
-                    // Se a imagem for retangular/maior (ativa a tela de corte)
+                    // Se for retangular, abre o corte
                     else {
                         imageToCrop.src = event.target.result;
                         cropperModal.style.display = 'flex';
@@ -223,7 +224,7 @@
             e.target.value = ''; 
         });
 
-        // 2. CONFIRMAR O CORTE E JOGAR NO CANVAS
+        // 2. CONFIRMAR O CORTE
         btnConfirmarCorte.addEventListener('click', () => {
             const canvasCortado = cropper.getCroppedCanvas({
                 width: 1000,
@@ -332,9 +333,29 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Modo offline ativado!'))
-            .catch(err => console.error('Erro no offline:', err));
+          navigator.serviceWorker.register('./sw.js').then(reg => {
+            
+            // Fica de olho se o GitHub mandou uma versão nova do sw.js
+            reg.addEventListener('updatefound', () => {
+              const novoSW = reg.installing;
+              novoSW.addEventListener('statechange', () => {
+                // Se baixou a versão nova e já existe uma velha rodando...
+                if (novoSW.state === 'installed' && navigator.serviceWorker.controller) {
+                  console.log('Nova versão encontrada! Recarregando a página...');
+                  // Força a página a dar um F5 automático na cara do usuário!
+                  window.location.reload(); 
+                }
+              });
+            });
+          });
+        });
+
+        // Garante que a tela pisque e atualize quando o gerente novo assumir
+        let recarregando;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (recarregando) return;
+          window.location.reload();
+          recarregando = true;
         });
       }
     </script>
