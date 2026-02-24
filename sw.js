@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bingo-cache-v4'; // Subimos para v4 para forçar essa nova regra
+const CACHE_NAME = 'bingo-cache-v5'; // Subimos para v4 para forçar essa nova regra
 const urlsToCache = [
   './',
   './index.html',
