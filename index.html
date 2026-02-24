@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Marcador de Bingo</title>
     
-    <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#007bff">
-    
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     
@@ -83,7 +80,7 @@
             margin-top: 15px;
         }
 
-        /* TELA DE CORTE (Oculta por padrão) */
+        /* TELA DE CORTE */
         #cropper-modal {
             display: none; 
             position: fixed;
@@ -187,7 +184,7 @@
             };
         }
 
-        // 1. CARREGAR IMAGEM (Lógica Inteligente)
+        // 1. CARREGAR IMAGEM E CORTAR
         inputImagem.addEventListener('change', function(e) {
             if (!e.target.files[0]) return;
             
@@ -196,22 +193,19 @@
                 const tempImg = new Image();
                 tempImg.onload = function() {
                     
-                    // Se for quadrado, vai direto
                     if (tempImg.width === tempImg.height) {
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.drawImage(tempImg, 0, 0, canvas.width, canvas.height);
                         historico = [];
                         salvarEstado();
-                    } 
-                    // Se for retangular, abre o corte
-                    else {
+                    } else {
                         imageToCrop.src = event.target.result;
                         cropperModal.style.display = 'flex';
                         
                         if (cropper) { cropper.destroy(); }
                         
                         cropper = new Cropper(imageToCrop, {
-                            aspectRatio: 1 / 1, // Força a ser quadrado
+                            aspectRatio: 1 / 1,
                             viewMode: 1,
                             dragMode: 'move',
                             background: false
@@ -281,14 +275,14 @@
         canvas.addEventListener('mouseup', pararDesenho);
         canvas.addEventListener('mouseout', pararDesenho);
 
-        // 5. SALVAR ESTADO
+        // 5. SALVAR ESTADO NA MEMÓRIA DO CELULAR (Permanece ao fechar)
         function salvarEstado() {
             const estadoAtual = canvas.toDataURL();
             historico.push(estadoAtual);
             try {
                 localStorage.setItem('bingoSalvo', estadoAtual);
             } catch (e) {
-                console.warn("Não foi possível guardar no LocalStorage.", e);
+                console.warn("Não foi possível salvar no LocalStorage.", e);
             }
         }
 
@@ -304,7 +298,7 @@
 
         // 7. BOTÃO LIMPAR
         btnLimpar.addEventListener('click', () => {
-            if (confirm("Tem a certeza que deseja limpar tudo?")) {
+            if (confirm("Tem certeza que deseja limpar tudo?")) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 historico = [];
                 salvarEstado();
@@ -320,25 +314,23 @@
             img.src = src;
         }
 
-        // 8. RECUPERAR AO ABRIR
+        // 8. RECUPERAR AO ABRIR O APP (Carrega o último estado salvo)
         window.onload = () => {
+            // Este código extra garante que o Service Worker antigo seja destruído
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for(let registration of registrations) {
+                        registration.unregister();
+                    }
+                });
+            }
+
             const salvo = localStorage.getItem('bingoSalvo');
             if (salvo) {
                 restaurarImagem(salvo);
                 historico.push(salvo);
             }
         };
-    </script>
-
-    <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for(let registration of registrations) {
-            registration.unregister();
-            console.log('Modo offline desativado e cache limpo com sucesso.');
-          }
-        });
-      }
     </script>
 </body>
 </html>
