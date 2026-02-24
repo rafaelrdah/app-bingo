@@ -1,9 +1,12 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Marcador de Bingo</title>
+    
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#007bff">
     
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
@@ -275,14 +278,14 @@
         canvas.addEventListener('mouseup', pararDesenho);
         canvas.addEventListener('mouseout', pararDesenho);
 
-        // 5. SALVAR ESTADO NA MEMÓRIA DO CELULAR (Permanece ao fechar)
+        // 5. SALVAR ESTADO NA MEMÓRIA DO TELEMÓVEL
         function salvarEstado() {
             const estadoAtual = canvas.toDataURL();
             historico.push(estadoAtual);
             try {
                 localStorage.setItem('bingoSalvo', estadoAtual);
             } catch (e) {
-                console.warn("Não foi possível salvar no LocalStorage.", e);
+                console.warn("Não foi possível guardar no LocalStorage.", e);
             }
         }
 
@@ -298,7 +301,7 @@
 
         // 7. BOTÃO LIMPAR
         btnLimpar.addEventListener('click', () => {
-            if (confirm("Tem certeza que deseja limpar tudo?")) {
+            if (confirm("Tem a certeza que deseja limpar tudo?")) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 historico = [];
                 salvarEstado();
@@ -314,9 +317,9 @@
             img.src = src;
         }
 
-        // 8. RECUPERAR AO ABRIR O APP (Carrega o último estado salvo)
+        // 8. RECUPERAR AO ABRIR A APP
         window.onload = () => {
-            // Este código extra garante que o Service Worker antigo seja destruído
+            // Elimina qualquer Service Worker antigo que ainda exista
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistrations().then(function(registrations) {
                     for(let registration of registrations) {
