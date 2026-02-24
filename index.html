@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Marcador de Bingo</title>
+    <title>Cartela de Bingo</title>
     
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#007bff">
@@ -288,7 +288,7 @@
             try {
                 localStorage.setItem('bingoSalvo', estadoAtual);
             } catch (e) {
-                console.warn("Não foi possível salvar no LocalStorage.", e);
+                console.warn("Não foi possível guardar no LocalStorage.", e);
             }
         }
 
@@ -304,7 +304,7 @@
 
         // 7. BOTÃO LIMPAR
         btnLimpar.addEventListener('click', () => {
-            if (confirm("Tem certeza que deseja limpar tudo?")) {
+            if (confirm("Tem a certeza que deseja limpar tudo?")) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 historico = [];
                 salvarEstado();
@@ -332,30 +332,11 @@
 
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').then(reg => {
-            
-            // Fica de olho se o GitHub mandou uma versão nova do sw.js
-            reg.addEventListener('updatefound', () => {
-              const novoSW = reg.installing;
-              novoSW.addEventListener('statechange', () => {
-                // Se baixou a versão nova e já existe uma velha rodando...
-                if (novoSW.state === 'installed' && navigator.serviceWorker.controller) {
-                  console.log('Nova versão encontrada! Recarregando a página...');
-                  // Força a página a dar um F5 automático na cara do usuário!
-                  window.location.reload(); 
-                }
-              });
-            });
-          });
-        });
-
-        // Garante que a tela pisque e atualize quando o gerente novo assumir
-        let recarregando;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (recarregando) return;
-          window.location.reload();
-          recarregando = true;
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+            console.log('Modo offline desativado e cache limpo com sucesso.');
+          }
         });
       }
     </script>
