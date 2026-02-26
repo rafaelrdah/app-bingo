@@ -79,8 +79,45 @@
             display: flex;
             width: 100%;
             max-width: 500px;
-            justify-content: flex-end;
+            justify-content: space-between;
+            align-items: center;
             margin-top: 15px;
+        }
+
+        /* SELETOR DE PINCEL VISUAL EM VERMELHO */
+        .seletor-tamanho {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: #333;
+            padding: 5px 12px;
+            border-radius: 50px;
+        }
+
+        .btn-tamanho {
+            background: none;
+            border: 2px solid transparent;
+            padding: 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .pincel-icone {
+            background-color: #ff0000; /* Alterado para Vermelho */
+            border-radius: 50%;
+            display: inline-block;
+            opacity: 0.8;
+        }
+
+        .btn-tamanho.ativo {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: #ffc107;
         }
 
         /* TELA DE CORTE */
@@ -133,6 +170,17 @@
     <canvas id="canvas" width="1000" height="1000"></canvas>
 
     <div class="controles-baixo">
+        <div class="seletor-tamanho">
+            <button class="btn-tamanho" onclick="mudarTamanho(7, this)">
+                <span class="pincel-icone" style="width: 5px; height: 5px;"></span>
+            </button>
+            <button class="btn-tamanho ativo" onclick="mudarTamanho(20, this)">
+                <span class="pincel-icone" style="width: 12px; height: 12px;"></span>
+            </button>
+            <button class="btn-tamanho" onclick="mudarTamanho(40, this)">
+                <span class="pincel-icone" style="width: 22px; height: 22px;"></span>
+            </button>
+        </div>
         <button id="btnDesfazer">Desfazer ↩️</button>
     </div>
 
@@ -163,11 +211,17 @@
         let desenhando = false;
         let historico = [];
 
-        // Configuração do risco
+        // Configuração inicial (Médio)
         ctx.strokeStyle = "rgba(255, 0, 0, 0.6)";
-        ctx.lineWidth = 40;
+        ctx.lineWidth = 20; 
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
+
+        function mudarTamanho(novoTamanho, elemento) {
+            ctx.lineWidth = novoTamanho;
+            document.querySelectorAll('.btn-tamanho').forEach(btn => btn.classList.remove('ativo'));
+            elemento.classList.add('ativo');
+        }
 
         function getPosicao(e) {
             const rect = canvas.getBoundingClientRect();
@@ -195,7 +249,6 @@
             reader.onload = function(event) {
                 const tempImg = new Image();
                 tempImg.onload = function() {
-                    
                     if (tempImg.width === tempImg.height) {
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.drawImage(tempImg, 0, 0, canvas.width, canvas.height);
@@ -204,9 +257,7 @@
                     } else {
                         imageToCrop.src = event.target.result;
                         cropperModal.style.display = 'flex';
-                        
                         if (cropper) { cropper.destroy(); }
-                        
                         cropper = new Cropper(imageToCrop, {
                             aspectRatio: 1 / 1,
                             viewMode: 1,
@@ -227,10 +278,8 @@
                 width: 1000,
                 height: 1000
             });
-
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(canvasCortado, 0, 0, canvas.width, canvas.height);
-            
             cropperModal.style.display = 'none';
             historico = [];
             salvarEstado();
@@ -278,7 +327,7 @@
         canvas.addEventListener('mouseup', pararDesenho);
         canvas.addEventListener('mouseout', pararDesenho);
 
-        // 5. SALVAR ESTADO NA MEMÓRIA DO TELEMÓVEL
+        // 5. SALVAR ESTADO
         function salvarEstado() {
             const estadoAtual = canvas.toDataURL();
             historico.push(estadoAtual);
@@ -317,9 +366,7 @@
             img.src = src;
         }
 
-        // 8. RECUPERAR AO ABRIR A APP
         window.onload = () => {
-            // Elimina qualquer Service Worker antigo que ainda exista
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistrations().then(function(registrations) {
                     for(let registration of registrations) {
@@ -327,7 +374,6 @@
                     }
                 });
             }
-
             const salvo = localStorage.getItem('bingoSalvo');
             if (salvo) {
                 restaurarImagem(salvo);
