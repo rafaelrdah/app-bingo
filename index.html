@@ -10,6 +10,7 @@
     
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     
     <style>
         body {
@@ -49,6 +50,8 @@
         button:hover, .input-file-btn:hover { background-color: #0056b3; }
         #btnDesfazer { background-color: #dc3545; }
         #btnDesfazer:hover { background-color: #c82333; }
+        #btnDesfazerVirtual { background-color: #dc3545; }
+        #btnDesfazerVirtual:hover { background-color: #c82333; }
         #btnLimpar { background-color: #ffc107; color: #212529; }
         #btnLimpar:hover { background-color: #e0a800; }
 
@@ -63,6 +66,15 @@
             left: 0; top: 0; opacity: 0; cursor: pointer;
         }
 
+        /* --- MODO MANUAL (PINCEL) --- */
+        #container-manual {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 500px;
+            align-items: center;
+        }
+
         canvas {
             width: 90vw;
             height: 90vw;
@@ -75,17 +87,14 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
 
-        /* ÁREA INFERIOR: Botões e Ferramentas */
         .controles-baixo {
             display: flex;
             width: 100%;
-            max-width: 500px;
             justify-content: space-between;
             align-items: flex-end; 
             margin-top: 15px;
         }
 
-        /* CAIXA DAS FERRAMENTAS DO PINCEL */
         .ferramentas-pincel {
             display: flex;
             flex-direction: column;
@@ -128,7 +137,6 @@
             border-color: #ffc107;
         }
 
-        /* A NOVA BARRA DESLIZANTE */
         .slider-personalizado {
             width: 100%;
             cursor: pointer;
@@ -140,7 +148,6 @@
             margin-bottom: 22px; 
         }
 
-        /* O PEGADOR (ALAVANCA) */
         .slider-personalizado::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
@@ -150,7 +157,6 @@
             background: #ff0000;
             cursor: pointer;
             box-shadow: 0 2px 6px rgba(0,0,0,0.6);
-            /* Sobe exatamente 2px acima do trilho e deixa o resto pendurado! */
             transform: translateY(9px);
         }
 
@@ -162,11 +168,170 @@
             cursor: pointer;
             border: none;
             box-shadow: 0 2px 6px rgba(0,0,0,0.6);
-            /* Sobe exatamente 2px acima do trilho */
             transform: translateY(9px);
         }
 
-        /* TELA DE CORTE */
+        /* --- MODO VIRTUAL (SIMULADOR DA CARTELA) --- */
+        #container-virtual {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            max-width: 500px;
+            align-items: center;
+        }
+
+        .cartela-virtual-wrapper {
+            background-color: #2db3e8; 
+            padding: 12px;
+            border-radius: 4px;
+            width: 90vw;
+            max-width: 500px;
+            box-sizing: border-box;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cartela-header {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 8px;
+        }
+
+        .nome-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 5px;
+        }
+
+        .nome-jogador {
+            background-color: #fff;
+            color: #2db3e8;
+            padding: 3px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+            font-family: serif;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        
+        .nome-jogador:active {
+            transform: scale(0.95);
+        }
+
+        .letras-bingo {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            text-align: center;
+            color: #fff;
+            font-size: 38px;
+            font-weight: bold;
+            font-family: serif;
+        }
+
+        .grade-virtual {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(5, 1fr);
+            gap: 4px; 
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            box-sizing: border-box;
+            background-color: #2db3e8; 
+        }
+
+        .btn-numero {
+            background-color: #fff;
+            border: none;
+            border-radius: 2px;
+            font-size: 26px;
+            font-family: serif;
+            color: #000;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .btn-numero span {
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn-numero.livre {
+            background-color: #2db3e8;
+            color: #fff;
+            font-size: 36px;
+        }
+
+        .btn-numero::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%; 
+            height: 85%;
+            border-radius: 50%;
+            background-color: rgba(255, 0, 0, 0.85); 
+            opacity: 0;
+            transition: opacity 0.1s;
+            z-index: 2;
+        }
+
+        .btn-numero.marcado::after {
+            opacity: 1;
+        }
+
+        /* --- BOTÕES INFERIORES VIRTUAIS --- */
+        .controles-baixo-virtual {
+            display: flex;
+            width: 100%;
+            justify-content: space-between; /* Um na esquerda, outro na direita */
+            margin-top: 15px;
+        }
+
+        .btn-mudar-modo {
+            background-color: #6c757d;
+            font-size: 14px;
+            padding: 8px 15px;
+            border-radius: 8px;
+        }
+        .btn-mudar-modo:hover { background-color: #5a6268; }
+
+        /* --- TELAS DE CARREGAMENTO E CORTE --- */
+        #loading-qr {
+            display: none; 
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.90);
+            z-index: 2000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #007bff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
         #cropper-modal {
             display: none; 
             position: fixed;
@@ -197,13 +362,14 @@
             display: flex;
             gap: 15px;
         }
-
-        #btn-confirmar-corte { background-color: #28a745; }
-        #btn-confirmar-corte:hover { background-color: #218838; }
-        #btn-cancelar-corte { background-color: #6c757d; }
     </style>
 </head>
 <body>
+
+    <div id="loading-qr">
+        <div class="spinner"></div>
+        <h3 style="margin:0;">A ler Cartela...</h3>
+    </div>
 
     <div class="controles-topo">
         <div class="input-wrapper">
@@ -213,57 +379,79 @@
         <button id="btnLimpar">Limpar Tudo 🗑️</button>
     </div>
 
-    <canvas id="canvas" width="1000" height="1000"></canvas>
-
-    <div class="controles-baixo">
-        <div class="ferramentas-pincel">
-            <div class="seletor-tamanho">
-                <button class="btn-tamanho" onclick="mudarTamanho(7, this)">
-                    <span class="pincel-icone" style="width: 5px; height: 5px;"></span>
-                </button>
-                <button class="btn-tamanho ativo" onclick="mudarTamanho(20, this)">
-                    <span class="pincel-icone" style="width: 12px; height: 12px;"></span>
-                </button>
-                <button class="btn-tamanho" onclick="mudarTamanho(40, this)">
-                    <span class="pincel-icone" style="width: 22px; height: 22px;"></span>
-                </button>
+    <div id="container-virtual">
+        <div class="cartela-virtual-wrapper">
+            <div class="cartela-header">
+                <div class="nome-container">
+                    <div class="nome-jogador" id="nomeDisplay" onclick="editarNome()" title="Toque para corrigir o nome">JOGADOR</div>
+                </div>
+                <div class="letras-bingo">
+                    <div>B</div><div>I</div><div>N</div><div>G</div><div>O</div>
+                </div>
             </div>
-            <input type="range" id="sliderPincel" class="slider-personalizado" min="5" max="115" value="20">
+            <div class="grade-virtual" id="grade-botoes"></div>
         </div>
+        
+        <div class="controles-baixo-virtual">
+            <button class="btn-mudar-modo" id="btnMudarManual">✏️ Mudar para Pincel</button>
+            <button id="btnDesfazerVirtual">Desfazer ↩️</button>
+        </div>
+    </div>
 
-        <button id="btnDesfazer">Desfazer ↩️</button>
+    <div id="container-manual">
+        <canvas id="canvas" width="1000" height="1000"></canvas>
+
+        <div class="controles-baixo">
+            <div class="ferramentas-pincel">
+                <div class="seletor-tamanho">
+                    <button class="btn-tamanho" onclick="mudarTamanho(7, this)"><span class="pincel-icone" style="width: 5px; height: 5px;"></span></button>
+                    <button class="btn-tamanho ativo" onclick="mudarTamanho(20, this)"><span class="pincel-icone" style="width: 12px; height: 12px;"></span></button>
+                    <button class="btn-tamanho" onclick="mudarTamanho(40, this)"><span class="pincel-icone" style="width: 22px; height: 22px;"></span></button>
+                </div>
+                <input type="range" id="sliderPincel" class="slider-personalizado" min="5" max="115" value="20">
+            </div>
+            <button id="btnDesfazer">Desfazer ↩️</button>
+        </div>
     </div>
 
     <div id="cropper-modal">
         <h3 style="margin-top:0; color:white; text-align:center;">Ajuste a sua Cartela</h3>
-        <div class="cropper-container-wrapper">
-            <img id="image-to-crop" src="">
-        </div>
+        <div class="cropper-container-wrapper"><img id="image-to-crop" src=""></div>
         <div class="botoes-corte">
-            <button id="btn-cancelar-corte">Cancelar ❌</button>
-            <button id="btn-confirmar-corte">Cortar e Usar ✅</button>
+            <button id="btn-cancelar-corte" style="background-color: #6c757d;">Cancelar ❌</button>
+            <button id="btn-confirmar-corte" style="background-color: #28a745;">Cortar e Usar ✅</button>
         </div>
     </div>
 
     <script>
+        let modoAtual = 'manual';
+        let imagemOriginalSrc = null;
+
+        const inputImagem = document.getElementById('carregarImagem');
+        const btnLimpar = document.getElementById('btnLimpar');
+        const loadingQr = document.getElementById('loading-qr');
+        const containerVirtual = document.getElementById('container-virtual');
+        const gradeBotoes = document.getElementById('grade-botoes');
+        const nomeDisplay = document.getElementById('nomeDisplay');
+        const btnMudarManual = document.getElementById('btnMudarManual');
+        const btnDesfazerVirtual = document.getElementById('btnDesfazerVirtual');
+        const containerManual = document.getElementById('container-manual');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const inputImagem = document.getElementById('carregarImagem');
         const btnDesfazer = document.getElementById('btnDesfazer');
-        const btnLimpar = document.getElementById('btnLimpar');
-        
         const sliderPincel = document.getElementById('sliderPincel');
-
         const cropperModal = document.getElementById('cropper-modal');
         const imageToCrop = document.getElementById('image-to-crop');
         const btnConfirmarCorte = document.getElementById('btn-confirmar-corte');
         const btnCancelarCorte = document.getElementById('btn-cancelar-corte');
+        
         let cropper;
-
         let desenhando = false;
-        let historico = [];
+        
+        // Históricos independentes
+        let historico = []; // Histórico do Pincel
+        let historicoVirtual = []; // Histórico da Grelha Virtual
 
-        // OPACIDADE E TAMANHO INICIAL
         ctx.strokeStyle = "rgba(255, 0, 0, 0.85)";
         ctx.lineWidth = 20; 
         ctx.lineCap = "round";
@@ -272,7 +460,6 @@
         function mudarTamanho(novoTamanho, elemento) {
             ctx.lineWidth = novoTamanho;
             sliderPincel.value = novoTamanho;
-            
             document.querySelectorAll('.btn-tamanho').forEach(btn => btn.classList.remove('ativo'));
             elemento.classList.add('ativo');
         }
@@ -282,7 +469,245 @@
             document.querySelectorAll('.btn-tamanho').forEach(btn => btn.classList.remove('ativo'));
         });
 
-        function getPosicao(e) {
+        function editarNome() {
+            let nomeAtual = nomeDisplay.innerText;
+            if (nomeAtual === "JOGADOR") nomeAtual = "";
+            
+            const novoNome = prompt("Corrija o seu nome para a cartela:", nomeAtual);
+            if (novoNome !== null && novoNome.trim() !== "") {
+                nomeDisplay.innerText = novoNome.trim().toUpperCase();
+                localStorage.setItem('bingoNomeVirtual', nomeDisplay.innerText);
+            }
+        }
+
+        // =================================================================
+        // LÓGICA DO QR CODE
+        // =================================================================
+        function lerQRCode(src, callback) {
+            const img = new Image();
+            img.onload = () => {
+                const cvs = document.createElement('canvas');
+                cvs.width = img.width;
+                cvs.height = img.height;
+                const ctxTemp = cvs.getContext('2d');
+                ctxTemp.drawImage(img, 0, 0, cvs.width, cvs.height);
+                
+                const imageData = ctxTemp.getImageData(0, 0, cvs.width, cvs.height);
+                const codigo = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                });
+                
+                if (codigo) {
+                    callback({ sucesso: true, dados: codigo.data });
+                } else {
+                    callback({ sucesso: false });
+                }
+            };
+            img.src = src;
+        }
+
+        inputImagem.addEventListener('change', function(e) {
+            if (!e.target.files[0]) return;
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(event) {
+                imagemOriginalSrc = event.target.result;
+                loadingQr.style.display = 'flex';
+                
+                lerQRCode(imagemOriginalSrc, (resultado) => {
+                    loadingQr.style.display = 'none';
+                    
+                    if(resultado.sucesso) {
+                        try {
+                            const partes = resultado.dados.split('|');
+                            if(partes.length >= 3) {
+                                const numeros = partes[1].split(',').map(Number);
+                                const nome = partes[2];
+                                
+                                if(numeros.length === 24) {
+                                    iniciarModoVirtual(numeros, nome);
+                                } else {
+                                    iniciarModoManualPlanoB(imagemOriginalSrc);
+                                }
+                            } else {
+                                iniciarModoManualPlanoB(imagemOriginalSrc);
+                            }
+                        } catch (err) {
+                            iniciarModoManualPlanoB(imagemOriginalSrc);
+                        }
+                    } else {
+                        iniciarModoManualPlanoB(imagemOriginalSrc);
+                    }
+                });
+            }
+            reader.readAsDataURL(file);
+            e.target.value = ''; 
+        });
+
+        // =================================================================
+        // SISTEMA DE HISTÓRICO VIRTUAL (NOVO)
+        // =================================================================
+        function guardarEstadoNoHistoricoVirtual() {
+            const botoes = document.querySelectorAll('.btn-numero');
+            const estado = Array.from(botoes).map(btn => btn.classList.contains('marcado'));
+            historicoVirtual.push(JSON.stringify(estado));
+        }
+
+        btnDesfazerVirtual.addEventListener('click', () => {
+            if (historicoVirtual.length > 0) {
+                // Recupera a foto invisível de como o jogo estava um passo antes
+                const estadoAnteriorStr = historicoVirtual.pop();
+                const estadoAnterior = JSON.parse(estadoAnteriorStr);
+                
+                const botoes = document.querySelectorAll('.btn-numero');
+                botoes.forEach((btn, index) => {
+                    if (estadoAnterior[index]) {
+                        btn.classList.add('marcado');
+                    } else {
+                        btn.classList.remove('marcado');
+                    }
+                });
+                salvarEstadoVirtual(); // Atualiza a gravação para se fechar a página
+            }
+        });
+
+        function iniciarModoVirtual(numeros, nome) {
+            modoAtual = 'virtual';
+            containerManual.style.display = 'none';
+            containerVirtual.style.display = 'flex';
+            
+            nomeDisplay.innerText = nome;
+            gradeBotoes.innerHTML = '';
+            historicoVirtual = []; // Limpa histórico antigo ao carregar nova cartela
+            let numIndex = 0;
+
+            for(let i = 0; i < 25; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'btn-numero';
+                btn.dataset.indice = i;
+
+                const spanText = document.createElement('span');
+
+                if(i === 12) {
+                    spanText.innerText = '★'; 
+                    btn.classList.add('livre');
+                } else {
+                    spanText.innerText = numeros[numIndex];
+                    numIndex++;
+                }
+
+                btn.appendChild(spanText);
+
+                btn.addEventListener('click', function() {
+                    // Guarda na máquina do tempo ANTES de pintar
+                    guardarEstadoNoHistoricoVirtual();
+                    this.classList.toggle('marcado');
+                    salvarEstadoVirtual();
+                });
+                gradeBotoes.appendChild(btn);
+            }
+            
+            localStorage.setItem('bingoModo', 'virtual');
+            localStorage.setItem('bingoNomeVirtual', nome);
+            salvarEstadoVirtual();
+        }
+
+        function salvarEstadoVirtual() {
+            const botoes = document.querySelectorAll('.btn-numero');
+            const estado = Array.from(botoes).map(btn => ({
+                texto: btn.querySelector('span').innerText,
+                marcado: btn.classList.contains('marcado'),
+                livre: btn.classList.contains('livre')
+            }));
+            localStorage.setItem('bingoVirtual', JSON.stringify(estado));
+        }
+
+        function restaurarEstadoVirtual(estadoSalvo, nomeSalvo) {
+            modoAtual = 'virtual';
+            containerManual.style.display = 'none';
+            containerVirtual.style.display = 'flex';
+            
+            nomeDisplay.innerText = nomeSalvo || "JOGADOR";
+            gradeBotoes.innerHTML = '';
+            historicoVirtual = [];
+
+            const estado = JSON.parse(estadoSalvo);
+            estado.forEach((item, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-numero';
+                btn.dataset.indice = i;
+                
+                const spanText = document.createElement('span');
+                spanText.innerText = item.texto;
+                btn.appendChild(spanText);
+
+                if(item.livre) btn.classList.add('livre');
+                if(item.marcado) btn.classList.add('marcado');
+                
+                btn.addEventListener('click', function() {
+                    guardarEstadoNoHistoricoVirtual(); // Salva estado antes do clique
+                    this.classList.toggle('marcado');
+                    salvarEstadoVirtual();
+                });
+                gradeBotoes.appendChild(btn);
+            });
+        }
+
+        // =================================================================
+        // TRAVA DE SEGURANÇA NO BOTÃO MUDAR PARA MANUAL
+        // =================================================================
+        btnMudarManual.addEventListener('click', () => {
+            if(confirm("Atenção!\nAo mudar para o Modo Pincel, perderá as marcações virtuais atuais.\n\nDeseja continuar?")) {
+                if(imagemOriginalSrc) {
+                    iniciarModoManualPlanoB(imagemOriginalSrc);
+                }
+            }
+        });
+
+        function iniciarModoManualPlanoB(srcImagem) {
+            modoAtual = 'manual';
+            containerVirtual.style.display = 'none';
+            containerManual.style.display = 'flex';
+            localStorage.setItem('bingoModo', 'manual');
+
+            const tempImg = new Image();
+            tempImg.onload = function() {
+                if (tempImg.width === tempImg.height) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(tempImg, 0, 0, canvas.width, canvas.height);
+                    historico = [];
+                    salvarEstadoManual();
+                } else {
+                    imageToCrop.src = srcImagem;
+                    cropperModal.style.display = 'flex';
+                    if (cropper) { cropper.destroy(); }
+                    cropper = new Cropper(imageToCrop, {
+                        aspectRatio: 1 / 1,
+                        viewMode: 1,
+                        dragMode: 'move',
+                        background: false
+                    });
+                }
+            };
+            tempImg.src = srcImagem;
+        }
+
+        btnConfirmarCorte.addEventListener('click', () => {
+            const canvasCortado = cropper.getCroppedCanvas({ width: 1000, height: 1000 });
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(canvasCortado, 0, 0, canvas.width, canvas.height);
+            cropperModal.style.display = 'none';
+            historico = [];
+            salvarEstadoManual();
+        });
+
+        btnCancelarCorte.addEventListener('click', () => {
+            cropperModal.style.display = 'none';
+            if (cropper) { cropper.destroy(); }
+        });
+
+        function getPosicaoManual(e) {
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
@@ -294,84 +719,34 @@
                 clientX = e.clientX;
                 clientY = e.clientY;
             }
-            return {
-                x: (clientX - rect.left) * scaleX,
-                y: (clientY - rect.top) * scaleY
-            };
+            return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
         }
 
-        inputImagem.addEventListener('change', function(e) {
-            if (!e.target.files[0]) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const tempImg = new Image();
-                tempImg.onload = function() {
-                    if (tempImg.width === tempImg.height) {
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        ctx.drawImage(tempImg, 0, 0, canvas.width, canvas.height);
-                        historico = [];
-                        salvarEstado();
-                    } else {
-                        imageToCrop.src = event.target.result;
-                        cropperModal.style.display = 'flex';
-                        if (cropper) { cropper.destroy(); }
-                        cropper = new Cropper(imageToCrop, {
-                            aspectRatio: 1 / 1,
-                            viewMode: 1,
-                            dragMode: 'move',
-                            background: false
-                        });
-                    }
-                };
-                tempImg.src = event.target.result;
-            }
-            reader.readAsDataURL(e.target.files[0]);
-            e.target.value = ''; 
-        });
-
-        btnConfirmarCorte.addEventListener('click', () => {
-            const canvasCortado = cropper.getCroppedCanvas({
-                width: 1000,
-                height: 1000
-            });
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(canvasCortado, 0, 0, canvas.width, canvas.height);
-            cropperModal.style.display = 'none';
-            historico = [];
-            salvarEstado();
-        });
-
-        btnCancelarCorte.addEventListener('click', () => {
-            cropperModal.style.display = 'none';
-            if (cropper) { cropper.destroy(); }
-        });
-
         function iniciarDesenho(e) {
+            if(modoAtual !== 'manual') return;
             e.preventDefault();
             desenhando = true;
-            const pos = getPosicao(e);
+            const pos = getPosicaoManual(e);
             ctx.beginPath();
             ctx.moveTo(pos.x, pos.y);
-            
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
         }
 
         function desenhar(e) {
+            if (!desenhando || modoAtual !== 'manual') return;
             e.preventDefault();
-            if (!desenhando) return;
-            const pos = getPosicao(e);
+            const pos = getPosicaoManual(e);
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
         }
 
         function pararDesenho(e) {
-            if (desenhando) {
+            if (desenhando && modoAtual === 'manual') {
                 e.preventDefault();
                 desenhando = false;
                 ctx.closePath();
-                salvarEstado();
+                salvarEstadoManual();
             }
         }
 
@@ -379,45 +754,46 @@
         canvas.addEventListener('touchmove', desenhar, { passive: false });
         canvas.addEventListener('touchend', pararDesenho, { passive: false });
         canvas.addEventListener('touchcancel', pararDesenho, { passive: false });
-
         canvas.addEventListener('mousedown', iniciarDesenho);
         canvas.addEventListener('mousemove', desenhar);
         canvas.addEventListener('mouseup', pararDesenho);
         canvas.addEventListener('mouseout', pararDesenho);
 
-        function salvarEstado() {
+        function salvarEstadoManual() {
             const estadoAtual = canvas.toDataURL();
             historico.push(estadoAtual);
-            try {
-                localStorage.setItem('bingoSalvo', estadoAtual);
-            } catch (e) {
-                console.warn("Não foi possível guardar no LocalStorage.", e);
-            }
+            try { localStorage.setItem('bingoSalvoManual', estadoAtual); } catch (e) {}
         }
 
         btnDesfazer.addEventListener('click', () => {
             if (historico.length > 1) {
                 historico.pop();
                 const estadoAnterior = historico[historico.length - 1];
-                restaurarImagem(estadoAnterior);
-                localStorage.setItem('bingoSalvo', estadoAnterior);
+                restaurarImagemManual(estadoAnterior);
+                localStorage.setItem('bingoSalvoManual', estadoAnterior);
             }
         });
 
+        // BOTÃO LIMPAR TUDO: Agora suporta desfazer no modo virtual!
         btnLimpar.addEventListener('click', () => {
-            if (confirm("Tem a certeza que deseja limpar tudo?")) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                historico = [];
-                salvarEstado();
+            if (confirm("Tem a certeza que deseja limpar as marcações?")) {
+                if(modoAtual === 'virtual') {
+                    guardarEstadoNoHistoricoVirtual(); // Salva antes de apagar tudo
+                    document.querySelectorAll('.btn-numero').forEach(btn => btn.classList.remove('marcado'));
+                    salvarEstadoVirtual();
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    historico = [];
+                    salvarEstadoManual();
+                }
             }
         });
 
-        function restaurarImagem(src) {
+        function restaurarImagemManual(src) {
             const img = new Image();
             img.onload = () => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                
                 ctx.strokeStyle = "rgba(255, 0, 0, 0.85)";
                 ctx.lineWidth = sliderPincel.value;
                 ctx.lineCap = "round";
@@ -429,15 +805,24 @@
         window.onload = () => {
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                    for(let registration of registrations) {
-                        registration.unregister();
-                    }
+                    for(let reg of registrations) reg.unregister();
                 });
             }
-            const salvo = localStorage.getItem('bingoSalvo');
-            if (salvo) {
-                restaurarImagem(salvo);
-                historico.push(salvo);
+
+            const modoGuardado = localStorage.getItem('bingoModo');
+            if (modoGuardado === 'virtual') {
+                const estadoVirtual = localStorage.getItem('bingoVirtual');
+                const nomeVirtual = localStorage.getItem('bingoNomeVirtual');
+                if(estadoVirtual) restaurarEstadoVirtual(estadoVirtual, nomeVirtual);
+            } else if (modoGuardado === 'manual' || !modoGuardado) {
+                modoAtual = 'manual';
+                containerVirtual.style.display = 'none';
+                containerManual.style.display = 'flex';
+                const salvoManual = localStorage.getItem('bingoSalvoManual');
+                if (salvoManual) {
+                    restaurarImagemManual(salvoManual);
+                    historico.push(salvoManual);
+                }
             }
         };
     </script>
