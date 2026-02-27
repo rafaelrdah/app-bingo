@@ -75,23 +75,31 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
 
+        /* ÁREA INFERIOR: Botões e Ferramentas */
         .controles-baixo {
             display: flex;
             width: 100%;
             max-width: 500px;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-end; 
             margin-top: 15px;
         }
 
-        /* SELETOR DE PINCEL VISUAL EM VERMELHO */
+        /* CAIXA DAS FERRAMENTAS DO PINCEL */
+        .ferramentas-pincel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #333;
+            padding: 10px 15px 5px 15px;
+            border-radius: 20px;
+        }
+
         .seletor-tamanho {
             display: flex;
             gap: 10px;
             align-items: center;
-            background: #333;
-            padding: 5px 12px;
-            border-radius: 50px;
+            justify-content: center;
         }
 
         .btn-tamanho {
@@ -109,7 +117,7 @@
         }
 
         .pincel-icone {
-            background-color: #ff0000; /* Alterado para Vermelho */
+            background-color: #ff0000;
             border-radius: 50%;
             display: inline-block;
             opacity: 0.8;
@@ -118,6 +126,44 @@
         .btn-tamanho.ativo {
             background-color: rgba(255, 255, 255, 0.1);
             border-color: #ffc107;
+        }
+
+        /* A NOVA BARRA DESLIZANTE */
+        .slider-personalizado {
+            width: 100%;
+            cursor: pointer;
+            height: 6px;
+            background: #555;
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+            margin-bottom: 22px; 
+        }
+
+        /* O PEGADOR (ALAVANCA) */
+        .slider-personalizado::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px; 
+            height: 28px; 
+            border-radius: 4px;
+            background: #ff0000;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+            /* Sobe exatamente 2px acima do trilho e deixa o resto pendurado! */
+            transform: translateY(9px);
+        }
+
+        .slider-personalizado::-moz-range-thumb {
+            width: 14px;
+            height: 28px;
+            border-radius: 4px;
+            background: #ff0000;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+            /* Sobe exatamente 2px acima do trilho */
+            transform: translateY(9px);
         }
 
         /* TELA DE CORTE */
@@ -170,17 +216,21 @@
     <canvas id="canvas" width="1000" height="1000"></canvas>
 
     <div class="controles-baixo">
-        <div class="seletor-tamanho">
-            <button class="btn-tamanho" onclick="mudarTamanho(7, this)">
-                <span class="pincel-icone" style="width: 5px; height: 5px;"></span>
-            </button>
-            <button class="btn-tamanho ativo" onclick="mudarTamanho(20, this)">
-                <span class="pincel-icone" style="width: 12px; height: 12px;"></span>
-            </button>
-            <button class="btn-tamanho" onclick="mudarTamanho(40, this)">
-                <span class="pincel-icone" style="width: 22px; height: 22px;"></span>
-            </button>
+        <div class="ferramentas-pincel">
+            <div class="seletor-tamanho">
+                <button class="btn-tamanho" onclick="mudarTamanho(7, this)">
+                    <span class="pincel-icone" style="width: 5px; height: 5px;"></span>
+                </button>
+                <button class="btn-tamanho ativo" onclick="mudarTamanho(20, this)">
+                    <span class="pincel-icone" style="width: 12px; height: 12px;"></span>
+                </button>
+                <button class="btn-tamanho" onclick="mudarTamanho(40, this)">
+                    <span class="pincel-icone" style="width: 22px; height: 22px;"></span>
+                </button>
+            </div>
+            <input type="range" id="sliderPincel" class="slider-personalizado" min="5" max="115" value="20">
         </div>
+
         <button id="btnDesfazer">Desfazer ↩️</button>
     </div>
 
@@ -201,6 +251,8 @@
         const inputImagem = document.getElementById('carregarImagem');
         const btnDesfazer = document.getElementById('btnDesfazer');
         const btnLimpar = document.getElementById('btnLimpar');
+        
+        const sliderPincel = document.getElementById('sliderPincel');
 
         const cropperModal = document.getElementById('cropper-modal');
         const imageToCrop = document.getElementById('image-to-crop');
@@ -211,17 +263,24 @@
         let desenhando = false;
         let historico = [];
 
-        // Configuração inicial (Médio)
-        ctx.strokeStyle = "rgba(255, 0, 0, 0.6)";
+        // OPACIDADE E TAMANHO INICIAL
+        ctx.strokeStyle = "rgba(255, 0, 0, 0.85)";
         ctx.lineWidth = 20; 
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
 
         function mudarTamanho(novoTamanho, elemento) {
             ctx.lineWidth = novoTamanho;
+            sliderPincel.value = novoTamanho;
+            
             document.querySelectorAll('.btn-tamanho').forEach(btn => btn.classList.remove('ativo'));
             elemento.classList.add('ativo');
         }
+
+        sliderPincel.addEventListener('input', (e) => {
+            ctx.lineWidth = e.target.value;
+            document.querySelectorAll('.btn-tamanho').forEach(btn => btn.classList.remove('ativo'));
+        });
 
         function getPosicao(e) {
             const rect = canvas.getBoundingClientRect();
@@ -241,7 +300,6 @@
             };
         }
 
-        // 1. CARREGAR IMAGEM E CORTAR
         inputImagem.addEventListener('change', function(e) {
             if (!e.target.files[0]) return;
             
@@ -272,7 +330,6 @@
             e.target.value = ''; 
         });
 
-        // 2. CONFIRMAR O CORTE
         btnConfirmarCorte.addEventListener('click', () => {
             const canvasCortado = cropper.getCroppedCanvas({
                 width: 1000,
@@ -285,19 +342,20 @@
             salvarEstado();
         });
 
-        // 3. CANCELAR CORTE
         btnCancelarCorte.addEventListener('click', () => {
             cropperModal.style.display = 'none';
             if (cropper) { cropper.destroy(); }
         });
 
-        // 4. FUNÇÕES DE DESENHO
         function iniciarDesenho(e) {
             e.preventDefault();
             desenhando = true;
             const pos = getPosicao(e);
             ctx.beginPath();
             ctx.moveTo(pos.x, pos.y);
+            
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
         }
 
         function desenhar(e) {
@@ -327,7 +385,6 @@
         canvas.addEventListener('mouseup', pararDesenho);
         canvas.addEventListener('mouseout', pararDesenho);
 
-        // 5. SALVAR ESTADO
         function salvarEstado() {
             const estadoAtual = canvas.toDataURL();
             historico.push(estadoAtual);
@@ -338,7 +395,6 @@
             }
         }
 
-        // 6. BOTÃO DESFAZER
         btnDesfazer.addEventListener('click', () => {
             if (historico.length > 1) {
                 historico.pop();
@@ -348,7 +404,6 @@
             }
         });
 
-        // 7. BOTÃO LIMPAR
         btnLimpar.addEventListener('click', () => {
             if (confirm("Tem a certeza que deseja limpar tudo?")) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -362,6 +417,11 @@
             img.onload = () => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                ctx.strokeStyle = "rgba(255, 0, 0, 0.85)";
+                ctx.lineWidth = sliderPincel.value;
+                ctx.lineCap = "round";
+                ctx.lineJoin = "round";
             };
             img.src = src;
         }
