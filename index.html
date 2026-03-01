@@ -171,12 +171,11 @@
             transform: translateY(9px);
         }
 
-        /* --- MODO VIRTUAL (SIMULADOR DA CARTELA) --- */
+        /* --- MODO VIRTUAL PADRÃO (MOBILE - MENOR) --- */
         #container-virtual {
             display: none;
             flex-direction: column;
             width: 100%;
-            max-width: 500px;
             align-items: center;
         }
 
@@ -184,8 +183,8 @@
             background-color: #2db3e8; 
             padding: 12px;
             border-radius: 4px;
-            width: 90vw;
-            max-width: 500px;
+            width: 82vw; 
+            max-width: 400px; 
             box-sizing: border-box;
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
             display: flex;
@@ -207,10 +206,10 @@
         .nome-jogador {
             background-color: #fff;
             color: #2db3e8;
-            padding: 3px 20px;
+            padding: 3px 18px;
             border-radius: 20px;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 13px; 
             text-transform: uppercase;
             font-family: serif;
             cursor: pointer;
@@ -227,7 +226,7 @@
             grid-template-columns: repeat(5, 1fr);
             text-align: center;
             color: #fff;
-            font-size: 38px;
+            font-size: 34px; 
             font-weight: bold;
             font-family: serif;
         }
@@ -247,7 +246,7 @@
             background-color: #fff;
             border: none;
             border-radius: 2px;
-            font-size: 26px;
+            font-size: 21px; 
             font-family: serif;
             color: #000;
             cursor: pointer;
@@ -266,10 +265,12 @@
             z-index: 1;
         }
 
+        /* Cursor default para a estrela não parecer clicável */
         .btn-numero.livre {
             background-color: #2db3e8;
             color: #fff;
-            font-size: 36px;
+            font-size: 30px;
+            cursor: default; 
         }
 
         .btn-numero::after {
@@ -290,11 +291,11 @@
             opacity: 1;
         }
 
-        /* --- BOTÕES INFERIORES VIRTUAIS --- */
         .controles-baixo-virtual {
             display: flex;
-            width: 100%;
-            justify-content: space-between; /* Um na esquerda, outro na direita */
+            width: 82vw; 
+            max-width: 400px;
+            justify-content: space-between; 
             margin-top: 15px;
         }
 
@@ -361,6 +362,33 @@
         .botoes-corte {
             display: flex;
             gap: 15px;
+        }
+
+        /* ==========================================================
+           MÁGICA DA RESPONSIVIDADE: DESKTOP / PC (ECRÃS MAIORES QUE 600px)
+           ========================================================== */
+        @media (min-width: 600px) {
+            .cartela-virtual-wrapper {
+                width: 90vw; 
+                max-width: 500px; 
+            }
+            .nome-jogador {
+                font-size: 14px; 
+                padding: 3px 20px;
+            }
+            .letras-bingo {
+                font-size: 38px; 
+            }
+            .btn-numero {
+                font-size: 26px; 
+            }
+            .btn-numero.livre {
+                font-size: 36px;
+            }
+            .controles-baixo-virtual {
+                width: 90vw; 
+                max-width: 500px; 
+            }
         }
     </style>
 </head>
@@ -448,9 +476,8 @@
         let cropper;
         let desenhando = false;
         
-        // Históricos independentes
-        let historico = []; // Histórico do Pincel
-        let historicoVirtual = []; // Histórico da Grelha Virtual
+        let historico = []; 
+        let historicoVirtual = []; 
 
         ctx.strokeStyle = "rgba(255, 0, 0, 0.85)";
         ctx.lineWidth = 20; 
@@ -480,9 +507,6 @@
             }
         }
 
-        // =================================================================
-        // LÓGICA DO QR CODE
-        // =================================================================
         function lerQRCode(src, callback) {
             const img = new Image();
             img.onload = () => {
@@ -545,18 +569,16 @@
             e.target.value = ''; 
         });
 
-        // =================================================================
-        // SISTEMA DE HISTÓRICO VIRTUAL (NOVO)
-        // =================================================================
         function guardarEstadoNoHistoricoVirtual() {
             const botoes = document.querySelectorAll('.btn-numero');
             const estado = Array.from(botoes).map(btn => btn.classList.contains('marcado'));
             historicoVirtual.push(JSON.stringify(estado));
+            // Persiste o histórico virtual no armazenamento local
+            localStorage.setItem('bingoHistoricoVirtual', JSON.stringify(historicoVirtual));
         }
 
         btnDesfazerVirtual.addEventListener('click', () => {
             if (historicoVirtual.length > 0) {
-                // Recupera a foto invisível de como o jogo estava um passo antes
                 const estadoAnteriorStr = historicoVirtual.pop();
                 const estadoAnterior = JSON.parse(estadoAnteriorStr);
                 
@@ -568,7 +590,10 @@
                         btn.classList.remove('marcado');
                     }
                 });
-                salvarEstadoVirtual(); // Atualiza a gravação para se fechar a página
+                
+                // Atualiza o histórico persistente depois do "Desfazer"
+                localStorage.setItem('bingoHistoricoVirtual', JSON.stringify(historicoVirtual));
+                salvarEstadoVirtual(); 
             }
         });
 
@@ -579,7 +604,11 @@
             
             nomeDisplay.innerText = nome;
             gradeBotoes.innerHTML = '';
-            historicoVirtual = []; // Limpa histórico antigo ao carregar nova cartela
+            
+            // Limpa o histórico virtual de cartelas antigas
+            historicoVirtual = []; 
+            localStorage.removeItem('bingoHistoricoVirtual');
+            
             let numIndex = 0;
 
             for(let i = 0; i < 25; i++) {
@@ -600,10 +629,12 @@
                 btn.appendChild(spanText);
 
                 btn.addEventListener('click', function() {
-                    // Guarda na máquina do tempo ANTES de pintar
-                    guardarEstadoNoHistoricoVirtual();
-                    this.classList.toggle('marcado');
-                    salvarEstadoVirtual();
+                    // TRAVA NOVA: Só marca se não estiver marcado E não for a casa livre
+                    if (!this.classList.contains('marcado') && !this.classList.contains('livre')) {
+                        guardarEstadoNoHistoricoVirtual();
+                        this.classList.add('marcado');
+                        salvarEstadoVirtual();
+                    }
                 });
                 gradeBotoes.appendChild(btn);
             }
@@ -630,7 +661,14 @@
             
             nomeDisplay.innerText = nomeSalvo || "JOGADOR";
             gradeBotoes.innerHTML = '';
-            historicoVirtual = [];
+            
+            // Tenta recuperar o histórico salvo ou inicia um novo
+            const histSalvo = localStorage.getItem('bingoHistoricoVirtual');
+            if (histSalvo) {
+                historicoVirtual = JSON.parse(histSalvo);
+            } else {
+                historicoVirtual = [];
+            }
 
             const estado = JSON.parse(estadoSalvo);
             estado.forEach((item, i) => {
@@ -646,17 +684,17 @@
                 if(item.marcado) btn.classList.add('marcado');
                 
                 btn.addEventListener('click', function() {
-                    guardarEstadoNoHistoricoVirtual(); // Salva estado antes do clique
-                    this.classList.toggle('marcado');
-                    salvarEstadoVirtual();
+                    // TRAVA NOVA NA RESTAURAÇÃO TAMBÉM
+                    if (!this.classList.contains('marcado') && !this.classList.contains('livre')) {
+                        guardarEstadoNoHistoricoVirtual(); 
+                        this.classList.add('marcado');
+                        salvarEstadoVirtual();
+                    }
                 });
                 gradeBotoes.appendChild(btn);
             });
         }
 
-        // =================================================================
-        // TRAVA DE SEGURANÇA NO BOTÃO MUDAR PARA MANUAL
-        // =================================================================
         btnMudarManual.addEventListener('click', () => {
             if(confirm("Atenção!\nAo mudar para o Modo Pincel, perderá as marcações virtuais atuais.\n\nDeseja continuar?")) {
                 if(imagemOriginalSrc) {
@@ -774,18 +812,28 @@
             }
         });
 
-        // BOTÃO LIMPAR TUDO: Agora suporta desfazer no modo virtual!
+        // BOTÃO LIMPAR TUDO AGORA FAZ RESET TOTAL
         btnLimpar.addEventListener('click', () => {
-            if (confirm("Tem a certeza que deseja limpar as marcações?")) {
-                if(modoAtual === 'virtual') {
-                    guardarEstadoNoHistoricoVirtual(); // Salva antes de apagar tudo
-                    document.querySelectorAll('.btn-numero').forEach(btn => btn.classList.remove('marcado'));
-                    salvarEstadoVirtual();
-                } else {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    historico = [];
-                    salvarEstadoManual();
-                }
+            if (confirm("Tem a certeza que deseja limpar tudo e remover a cartela atual?")) {
+                
+                // 1. Limpa TODOS os dados locais gravados
+                localStorage.removeItem('bingoVirtual');
+                localStorage.removeItem('bingoNomeVirtual');
+                localStorage.removeItem('bingoHistoricoVirtual');
+                localStorage.removeItem('bingoModo');
+                localStorage.removeItem('bingoSalvoManual');
+                
+                // 2. Limpa a memória RAM
+                historicoVirtual = [];
+                historico = [];
+                imagemOriginalSrc = null;
+                
+                // 3. Volta o site para o estado de fábrica (Canvas Vazio)
+                modoAtual = 'manual';
+                containerVirtual.style.display = 'none';
+                containerManual.style.display = 'flex';
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
         });
 
